@@ -1,0 +1,63 @@
+package org.zkpk.hbase.outputSource;
+
+import org.apache.commons.logging.Log;
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.conf.Configured;
+import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.hbase.HBaseConfiguration;
+import org.apache.hadoop.hbase.io.ImmutableBytesWritable;
+import org.apache.hadoop.hbase.mapreduce.TableOutputFormat;
+import org.apache.hadoop.io.Writable;
+import org.apache.hadoop.mapreduce.Job;
+import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
+import org.apache.hadoop.util.GenericOptionsParser;
+import org.apache.hadoop.util.Tool;
+import org.apache.hadoop.util.ToolRunner;
+import org.apache.commons.logging.LogFactory;
+
+public class Main extends Configured implements Tool{
+	static final Log LOG = LogFactory.getLog(Main.class);
+	
+	@Override
+	public int run(String[] arg0) throws Exception{
+		String input = "hdfs://master:9000/lizhiyi-1617026187381-part-m-00000";
+		String table = "2018211582lzy";
+		
+		Configuration conf = HBaseConfiguration.create();
+		
+		Job job = new Job(conf,"Input from file"+input+" into table"+table);
+		job.setJarByClass(Main.class);
+		job.setMapperClass(MemberMapper.class);
+		
+		job.setOutputFormatClass(TableOutputFormat.class);
+		
+		job.getConfiguration().set(TableOutputFormat.OUTPUT_TABLE, table);
+		
+		job.setOutputKeyClass(ImmutableBytesWritable.class);
+		job.setOutputValueClass(Writable.class);
+		
+		job.setNumReduceTasks(0);
+		
+		FileInputFormat.addInputPath(job, new Path(input));
+		
+		return job.waitForCompletion(true)?0:1;
+	}
+	
+	public static void main(String[] args)throws Exception{
+		Configuration conf = new Configuration();
+		String[] otherArgs = new GenericOptionsParser(conf,args).getRemainingArgs();
+		for(int i=0;i<otherArgs.length;i++){
+			System.out.println(otherArgs[i]);
+		}
+		
+		int res = 1;
+		try{
+			res = ToolRunner.run(conf, new Main(),otherArgs);
+			System.out.println("------------------------"+res);
+		}catch(Exception e){
+			e.printStackTrace();
+		}
+		System.exit(res);
+	}
+
+}

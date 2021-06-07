@@ -1,0 +1,3 @@
+select avg(a.cnt) from (select size(split(keyword,'\\s+')) as cnt from sogou_ext_20111230) a; 
+
+select avg(a.len/a.cnt) from (select size(split(keyword,'\\s+')) as cnt,length(split(keyword,'\\s+')) as len from sogou_ext_20111230) a;

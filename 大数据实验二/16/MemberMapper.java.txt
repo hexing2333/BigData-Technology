@@ -1,0 +1,47 @@
+package org.zkpk.hbase.outputSource;
+
+import org.apache.hadoop.hbase.client.Put;
+import org.apache.hadoop.hbase.io.ImmutableBytesWritable;
+import org.apache.hadoop.io.LongWritable;
+import org.apache.hadoop.io.Text;
+import org.apache.hadoop.mapreduce.Mapper;
+
+public class MemberMapper extends Mapper<LongWritable,Text,
+ImmutableBytesWritable,Put>{
+	//\u5217\u65cf
+	private byte[] family = null;
+	//\u5217\u540d
+	private byte[] qualifier = null;
+	//\u5355\u5143\u683c\u5b58\u653e\u7684\u503c
+	private byte[] val = null;
+	//\u884c\u952e
+	private String rowkey = null;
+	//\u65f6\u95f4\u6233
+	private long ts = System.currentTimeMillis();
+	
+	protected void map(LongWritable key,Text value,Context context)
+			throws java.io.IOException , InterruptedException{
+		try{
+			String lineString = value.toString();
+			String[] arr = lineString.split("\t",-1);
+			if(arr.length==2){
+				rowkey = arr[0];
+				String[] vals = arr[1].split("\u0001",-1);
+				if(vals.length==4){
+					family = vals[0].getBytes();
+					qualifier = vals[1].getBytes();
+					val = vals[2].getBytes();
+					ts = Long.parseLong(vals[3]);
+					
+					Put put = new Put(rowkey.getBytes(),ts);
+					put.add(family, qualifier, val);
+					context.write(new ImmutableBytesWritable(rowkey.getBytes()), put);
+					
+				}
+			}
+		}catch(Exception e){
+			e.printStackTrace();
+		}
+	}
+
+}

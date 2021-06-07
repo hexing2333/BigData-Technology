@@ -1,0 +1,74 @@
+grant all on *.* to hadoop@'%' identified by 'hadoop'
+awk -F '\t' '{print $0"\t"substr($1,1,4)"\t"substr($1,5,2)"\t"substr($1,7,2)"\t"substr($1,9,2)}' sogou.100w.utf8 > sogou.100w.utf8.1
+awk -F"\t" '{if($2 != "" && $3 != "" && $2 != " " && $3 != " ") print $0}' sogou.100w.utf8.1 > sogou.100w.utf8.2
+
+CREATE EXTERNAL TABLE sogou_ext_20111230(
+ts STRING,
+uid STRING,
+keyword STRING,
+rank INT,
+`order` INT,
+url STRING,
+year INT,
+month INT,
+day INT,
+hour INT
+)
+COMMENT 'This is the sogou search data of extend data'
+ROW FORMAT DELIMITED
+FIELDS TERMINATED BY '\t'
+STORED AS TEXTFILE
+LOCATION '/sogou_ext/20111230';
+
+
+CREATE EXTERNAL TABLE sogou_partition(
+ts STRING,
+uid STRING,
+keyword STRING,
+rank INT,
+`order` INT,
+url STRING
+)
+COMMENT 'This is the sogou search data by partition'
+partitioned by (
+year INT,
+month INT,
+day INT,
+hour INT
+)
+ROW FORMAT DELIMITED
+FIELDS TERMINATED BY '\t'
+STORED AS TEXTFILE;
+
+INSERT OVERWRITE TABLE sogou_partition PARTITION(year,month,day,hour) 
+select * from sogou_ext_20111230;
+
+select count(*) from (select ts,uid,keyword,url from sogou_ext_20111230 group by ts,uid,keyword,url having count(*) =1) a;
+
+select SUM(IF(uids.cnt=1,1,0)),SUM(IF(uids.cnt=2,1,0)),SUM(IF(uids.cnt=3,1,0)),SUM(IF(uids.cnt>3,1,0)) from (select uid,count(*) as cnt from sogou_ext_20111230 group by uid) uids;
+
+from pyhive import hive
+import matplotlib.pyplot as plt
+plt.rcParams['font.sans-serif'] = ['SimHei'] # 步骤一（替换 sans-serif 字体）
+plt.rcParams['axes.unicode_minus'] = False # 步骤二（解决坐标轴负数的负号显示问题）
+conn = 
+hive.Connection(host='119.3.212.133',port=10000,auth='NOSASL',username='root')
+cursor = conn.cursor()
+cursor.execute('select keyword,count(*) as cnt from sogou_100w.sogou_ext_20111230 
+group by keyword order by cnt desc limit 10')
+keywords = []
+frequency = []
+for result in cursor.fetchall():
+ keywords.append(result[0])
+ frequency.append(result[1])
+cursor.close()
+conn.close()
+plt.barh(keywords, frequency)
+plt.title('频度排名-2018211582') 
+plt.xlabel('频度')
+plt.ylabel('关键词')
+plt.show()
+
+
+select SUM(IF(instr(url,keyword)>0,1,0)) from (select * from sogou_ext_20111230 where keyword like '%www%') a;
+
